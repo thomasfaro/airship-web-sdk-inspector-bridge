@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Airship Web SDK Inspector",
+  "version": "1.0.0",
+  "description": "Shows the channel ID and the local state of the Airship Web SDK on the current page. Read-only.",
+  "permissions": ["activeTab", "scripting"],
+  "action": {
+    "default_title": "Airship Web SDK Inspector",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Airship Web SDK Inspector — USB bridge</title>
+<link rel="icon" href="favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="icon192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#000818">
+<link rel="stylesheet" href="bridge.css">
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <img src="favicon.png" alt="" width="40" height="40">
+    <h1>USB bridge</h1>
+    <button id="install" class="secondary" type="button" hidden>Install as an app</button>
+  </div>
+  <p class="lede">
+    Reads the channel ID from a phone plugged into this computer. The phone browser stays
+    untouched: the collector runs in the page already open there, over the debugging cable.
+  </p>
+</header>
+
+<main>
+  <section>
+    <div class="section-head">
+      <h2>Connected phone</h2>
+      <button id="rescan" class="link" type="button">Scan again</button>
+    </div>
+    <div id="status"></div>
+
+    <details class="advanced">
+      <summary>Connect to a debugging endpoint by hand</summary>
+      <p class="hint">
+        For a phone paired over Wi-Fi with <code>adb tcpip</code>, a browser started with
+        <code>--remote-debugging-port</code>, or a port you forwarded yourself.
+      </p>
+      <form id="manual-form">
+        <input id="manual-endpoint" type="text" value="http://127.0.0.1:9222" spellcheck="false" />
+        <button class="secondary" type="submit">List pages</button>
+      </form>
+    </details>
+  </section>
+
+  <section id="targets"></section>
+
+  <section>
+    <div class="section-head">
+      <h2>Report</h2>
+      <button id="refresh" class="link" type="button" hidden>Read again</button>
+    </div>
+    <div id="panel"><p class="muted">Pick a phone, then the page open on it.</p></div>
+  </section>
+</main>
+
+<footer>
+  <p>
+    Read-only: nothing is installed on the phone and no data is modified. Reading does bring the
+    chosen tab to the front, because Android freezes background tabs and a frozen page never
+    answers. Keep the phone unlocked while reading.
+  </p>
+</footer>
+
+<script src="ui.js"></script>
+<script>
+  // Registered from the page rather than the bundle so it stays visible next to
+  // the manifest above. localhost counts as a secure context, so no certificate
+  // is involved.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function () {
+        /* the page works without it, only the install offer is lost */
+      });
+    });
+  }
+</script>
+</body>
+</html>

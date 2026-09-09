@@ -1,0 +1,16 @@
+{
+  "name": "Airship Web SDK Inspector — USB bridge",
+  "short_name": "USB bridge",
+  "description": "Reads the Airship channel ID from an Android phone plugged into this computer.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#000818",
+  "theme_color": "#000818",
+  "icons": [
+    { "src": "icon192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-maskable512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

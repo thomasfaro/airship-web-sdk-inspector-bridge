@@ -1,0 +1,183 @@
+:root {
+  --ink: #14161c;
+  --muted: #5b6472;
+  --line: #e2e6ec;
+  --accent: #0b6cf5;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 0 20px 56px;
+  font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--ink);
+  background: #fff;
+}
+
+header, main, footer { max-width: 720px; margin: 0 auto; }
+
+header { padding: 48px 0 16px; }
+
+h1 { margin: 0 0 10px; font-size: 30px; letter-spacing: -0.02em; }
+
+.brand { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.brand h1 { margin: 0; }
+.brand img { border-radius: 9px; }
+
+/* Chrome decides when an app may be offered for installation, so the button
+   only appears once the browser says so, and never inside the installed app. */
+#install { margin-left: auto; padding: 7px 14px; font-size: 14px; }
+
+.lede { margin: 0; color: #333a45; }
+
+section { padding: 26px 0; border-top: 1px solid var(--line); }
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+h2 { margin: 0; font-size: 19px; }
+
+.state {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  flex-wrap: wrap;
+}
+
+.pill {
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pill.ok { background: #e2f5e8; color: #157a3f; }
+.pill.ko { background: #f3f4f6; color: #6b7280; }
+
+.state-label { font-weight: 600; }
+.state-detail { color: var(--muted); font-size: 14px; }
+
+.muted { color: var(--muted); }
+.hint { margin: 10px 0 0; color: var(--muted); font-size: 14px; }
+
+.error {
+  margin: 10px 0 0;
+  padding: 11px 15px;
+  border-left: 3px solid #d94040;
+  background: #fdf1f1;
+  color: #7c2020;
+  font-size: 14px;
+}
+
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+button.primary, button.secondary {
+  padding: 10px 18px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+button.primary { background: var(--ink); color: #fff; }
+button.primary:hover { background: #000; }
+
+button.secondary { background: #fff; border-color: var(--line); color: var(--ink); }
+button.secondary:hover { border-color: #b9c2cf; }
+
+button.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: 14px;
+}
+
+button.link:hover { text-decoration: underline; }
+
+input.filter {
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 14px;
+}
+
+input.filter:focus {
+  outline: 2px solid rgba(11, 108, 245, 0.35);
+  border-color: var(--accent);
+}
+
+button.target {
+  display: block;
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 12px 15px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fbfcfd;
+  text-align: left;
+}
+
+button.target:hover { border-color: var(--accent); background: #f5f9ff; }
+
+/* the explicit display above would otherwise defeat the hidden attribute */
+button.target[hidden] { display: none; }
+
+.target-title { font-weight: 600; }
+
+.target-url {
+  color: var(--muted);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.advanced { margin-top: 18px; }
+
+.advanced summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-size: 14px;
+}
+
+.advanced form { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.advanced input {
+  flex: 1 1 260px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: 14px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.advanced input:focus {
+  outline: 2px solid rgba(11, 108, 245, 0.35);
+  border-color: var(--accent);
+}
+
+#panel { display: block; }
+
+footer {
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 14px;
+}
