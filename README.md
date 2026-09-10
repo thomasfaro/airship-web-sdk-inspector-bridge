@@ -79,6 +79,10 @@ window, rather than being a tab among twenty.
 Every start checks for a newer version and applies it before the bridge comes up. It never touches a
 folder someone is working in, and if the network is down it simply keeps the version you have.
 
+Without closing anything, the page also has an **Update and restart** button. The bridge steps aside,
+the launcher fetches whatever is newer and starts it again in the same window, and the page reloads
+itself once it answers — a few seconds, and none of it asks you to find the terminal window again.
+
 To pin a folder to the version it has, create an empty file called `.no-auto-update` next to the
 launcher.
 

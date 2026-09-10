@@ -151,7 +151,9 @@ fi
 
 echo "Starting on port ${PORT}…"
 echo ""
-PORT="$PORT" node "$ROOT/tools/bridge/server.js" &
+# BRIDGE_MANAGED tells the server a launcher is watching it, which is what makes
+# the page's "Update and restart" button possible.
+PORT="$PORT" BRIDGE_MANAGED=1 node "$ROOT/tools/bridge/server.js" &
 SERVER_PID=$!
 
 for _ in $(seq 1 40); do
@@ -179,4 +181,17 @@ echo "Keep this window open while you use the bridge — it is the bridge."
 echo "Press Ctrl+C, or close this window, to stop it."
 echo ""
 
-wait "$SERVER_PID"
+server_status=0
+wait "$SERVER_PID" || server_status=$?
+SERVER_PID=""
+
+# 75: the page's "Update and restart" button. The update itself happens at the
+# top of this script, so starting over is the whole of it.
+if [[ "$server_status" -eq 75 ]]; then
+  echo ""
+  bold "Updating and restarting…"
+  echo ""
+  exec bash "$ROOT/scripts/start.sh"
+fi
+
+exit "$server_status"

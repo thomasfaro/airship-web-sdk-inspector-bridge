@@ -581,6 +581,9 @@ const server = createServer(async (request, response) => {
 
       return sendJson(response, 200, {
         collectorReady: existsSync(COLLECTOR_PATH),
+        // Only the launcher can bring the server back, so only a server it
+        // started may offer the button that stops one.
+        canRestart: process.env.BRIDGE_MANAGED === '1',
         android,
         ios: {
           available: ios.proxyInstalled,
@@ -608,6 +611,25 @@ const server = createServer(async (request, response) => {
             : await androidTargets(query.get('serial'));
 
       return sendJson(response, 200, { targets });
+    }
+
+    // Updating means replacing the very files this process is running, so the
+    // process cannot do it to itself. It steps aside with exit code 75 instead,
+    // which the launcher reads as "update and start over".
+    if (pathname === '/api/restart' && request.method === 'POST') {
+      if (process.env.BRIDGE_MANAGED !== '1') {
+        throw new Error(
+          'this bridge was not started by the launcher, so nothing would bring it back — restart it the way you started it'
+        );
+      }
+      response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+      return response.end(JSON.stringify({ ok: true }), () => {
+        if (iosProxy && !iosProxy.killed) iosProxy.kill();
+        // A page held open on a keep-alive connection would keep close()
+        // waiting, so the timer is the one that has the last word.
+        server.close(() => process.exit(75));
+        setTimeout(() => process.exit(75), 1500).unref();
+      });
     }
 
     if (pathname === '/api/collect' && request.method === 'POST') {
