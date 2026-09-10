@@ -197,28 +197,8 @@ async function androidTargets(serial) {
 let iosProxy = null;
 let iosVersion = null;
 
-// iOS 26 moved the Runtime and Debugger domains from the page target to per-frame
-// targets, as part of WebKit Site Isolation. Listing tabs still works, but every
-// evaluation is dropped without an answer, and the last release of
-// ios_webkit_debug_proxy (1.9.2, 2023) cannot follow. Safari's own Web Inspector
-// is the only client Apple keeps in step, so that is where we send people.
-const IOS_AUTOMATION_CEILING = 26;
-
-const IOS_SITE_ISOLATION_NOTE =
-  'reading is not automatable on iOS 26 or later: WebKit moved the evaluation domains to frame targets and the debug proxy cannot follow. Use Safari on this Mac instead (Develop menu > the phone > the page, then paste the console snippet).';
-
-function iosMajor() {
-  const match = /^(\d+)/.exec(iosVersion || '');
-  return match ? Number(match[1]) : null;
-}
-
-function iosAutomationBlocked() {
-  const major = iosMajor();
-  return major !== null && major >= IOS_AUTOMATION_CEILING;
-}
-
-// Asking libimobiledevice directly means the version, and therefore whether an
-// automated read is possible at all, is known before any proxy is started.
+// Asking libimobiledevice directly means the phone is named in the status line
+// before any proxy is started.
 async function iosProbe() {
   const proxy = await which('ios_webkit_debug_proxy');
   const list = await which('idevice_id');
@@ -340,6 +320,8 @@ function connect(wsUrl, timeout = 10000) {
   return new Promise((resolve, reject) => {
     const socket = new WebSocket(wsUrl);
     const pending = new Map();
+    const targets = [];
+    let pageTargetWaiter = null;
     let nextId = 1;
 
     const timer = setTimeout(() => {
@@ -361,6 +343,46 @@ function connect(wsUrl, timeout = 10000) {
             pending.set(id, { ok, ko, commandTimer });
           });
         },
+
+        // Same command, addressed to one target instead of to the connection.
+        // The answer arrives as a Target.dispatchMessageFromTarget event whose
+        // payload carries the inner id, so that is the id waited on here.
+        sendVia(targetId, method, params = {}) {
+          const inner = { id: nextId++, method, params };
+          socket.send(
+            JSON.stringify({
+              id: nextId++,
+              method: 'Target.sendMessageToTarget',
+              params: { targetId, message: JSON.stringify(inner) }
+            })
+          );
+          return new Promise((ok, ko) => {
+            const commandTimer = setTimeout(() => {
+              pending.delete(inner.id);
+              ko(new Error(`${method} timed out`));
+            }, timeout);
+            pending.set(inner.id, { ok, ko, commandTimer });
+          });
+        },
+
+        // Targets announce themselves as soon as the connection opens, so this
+        // is a short wait rather than a request. Null means the phone announced
+        // none, which is the older behaviour.
+        pageTarget(wait = 2000) {
+          const known = targets.find((target) => target.type === 'page');
+          if (known) return Promise.resolve(known.targetId);
+          return new Promise((done) => {
+            const timer = setTimeout(() => {
+              pageTargetWaiter = null;
+              done(null);
+            }, wait);
+            pageTargetWaiter = (target) => {
+              clearTimeout(timer);
+              pageTargetWaiter = null;
+              done(target.targetId);
+            };
+          });
+        },
         close() {
           try {
             socket.close();
@@ -378,6 +400,25 @@ function connect(wsUrl, timeout = 10000) {
       } catch (error) {
         return;
       }
+
+      if (message.method === 'Target.targetCreated') {
+        const target = message.params && message.params.targetInfo;
+        if (target) {
+          targets.push(target);
+          if (target.type === 'page' && pageTargetWaiter) pageTargetWaiter(target);
+        }
+        return;
+      }
+
+      // A reply from a target is an event wrapping the real reply.
+      if (message.method === 'Target.dispatchMessageFromTarget') {
+        try {
+          message = JSON.parse(message.params.message);
+        } catch (error) {
+          return;
+        }
+      }
+
       const waiter = message.id != null && pending.get(message.id);
       if (!waiter) return;
       clearTimeout(waiter.commandTimer);
@@ -408,8 +449,8 @@ function readCollector() {
   return readFileSync(COLLECTOR_PATH, 'utf8');
 }
 
-async function evaluate(session, expression) {
-  const result = await session.send('Runtime.evaluate', {
+async function evaluate(call, expression) {
+  const result = await call('Runtime.evaluate', {
     expression,
     returnByValue: true,
     includeCommandLineAPI: false,
@@ -428,26 +469,31 @@ async function evaluate(session, expression) {
 }
 
 async function collectFromTarget(wsUrl, platform) {
-  // No point spending the full budget on a phone we already know cannot answer.
-  if (platform === 'ios' && iosAutomationBlocked()) {
-    throw new Error(`iOS ${iosVersion}: ${IOS_SITE_ISOLATION_NOTE}`);
-  }
-
   const session = await connect(wsUrl);
   try {
+    // From iOS 26, WebKit Site Isolation answers Runtime calls on the page
+    // target rather than on the page connection: sent to the connection they
+    // come back as "'Runtime' domain was not found". So on an iPhone the
+    // commands travel to whichever page target the phone announces. Android
+    // announces none and answers on the connection, as older iOS does.
+    const target = platform === 'ios' ? await session.pageTarget() : null;
+    const call = target
+      ? (method, params) => session.sendVia(target, method, params)
+      : (method, params) => session.send(method, params);
+
     // Android freezes background tabs: their timers and promises never progress,
     // so the collector would start and never finish. Activating the tab first is
     // what makes a remote read reliable.
-    await session.send('Page.bringToFront').catch(() => {});
-    await session.send('Runtime.enable').catch(() => {});
-    await evaluate(session, readCollector());
+    await call('Page.bringToFront').catch(() => {});
+    await call('Runtime.enable').catch(() => {});
+    await evaluate(call, readCollector());
 
     // First call starts the collection, later ones pick up the result. An iPhone
     // that is going to answer does so quickly, so it gets a shorter budget.
     const attempts = platform === 'ios' ? 32 : 100;
 
     for (let attempt = 0; attempt < attempts; attempt += 1) {
-      const value = await evaluate(session, COLLECT_SNIPPET);
+      const value = await evaluate(call, COLLECT_SNIPPET);
       if (typeof value === 'string' && value !== 'pending') {
         const parsed = JSON.parse(value);
         if (!parsed.ok) throw new Error(parsed.error);
@@ -458,7 +504,7 @@ async function collectFromTarget(wsUrl, platform) {
 
     throw new Error(
       platform === 'ios'
-        ? `The iPhone accepted the connection but answered nothing: ${IOS_SITE_ISOLATION_NOTE}`
+        ? 'the iPhone accepted the connection but returned no report within 8 seconds — keep it unlocked with that page open, then read again'
         : 'the phone did not return a report within 25 seconds — keep the phone unlocked with that tab visible, then read again'
     );
   } finally {
@@ -532,25 +578,19 @@ const server = createServer(async (request, response) => {
     if (pathname === '/api/status') {
       const android = await androidDevices();
       const ios = await iosProbe();
-      const blocked = iosAutomationBlocked();
 
       return sendJson(response, 200, {
         collectorReady: existsSync(COLLECTOR_PATH),
         android,
         ios: {
-          available: ios.proxyInstalled && !blocked,
+          available: ios.proxyInstalled,
           device: ios.device,
           version: ios.version,
-          automationBlocked: blocked,
           reason: !ios.proxyInstalled
             ? 'ios_webkit_debug_proxy is not installed (brew install ios-webkit-debug-proxy)'
-            : blocked
-              ? // The instruction that follows this line carries the remedy, so
-                // the status only needs to state the fact and its cause.
-                `${ios.device || 'iPhone'}, iOS ${ios.version} — no automated read: WebKit moved the evaluation domains to frame targets`
-              : ios.device
-                ? `${ios.device}, iOS ${ios.version}`
-                : 'no iPhone detected',
+            : ios.device
+              ? `${ios.device}, iOS ${ios.version}`
+              : 'no iPhone detected',
           proxyRunning: Boolean(iosProxy && !iosProxy.killed)
         }
       });
