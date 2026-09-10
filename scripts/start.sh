@@ -69,9 +69,12 @@ on_exit() {
 trap on_exit EXIT
 trap 'exit 130' INT TERM
 
-bold "Airship Web SDK Inspector — USB bridge"
-echo "Folder: $ROOT"
-echo ""
+# On the restart that follows an update, the banner has already been read.
+if [[ "${BRIDGE_UPDATED:-0}" != "1" ]]; then
+  bold "Airship Web SDK Inspector — USB bridge"
+  echo "Folder: $ROOT"
+  echo ""
+fi
 
 # A folder unzipped by a browser arrives quarantined. Clearing it cannot help the
 # first launch — Gatekeeper has already run by the time we get here — but it is
@@ -99,6 +102,7 @@ if [[ "${BRIDGE_UPDATED:-0}" != "1" ]]; then
   update_status=0
   node "$ROOT/scripts/update.mjs" || update_status=$?
   if [[ "$update_status" -eq 10 ]]; then
+    echo "Restarting on the new version…"
     echo ""
     BRIDGE_UPDATED=1 exec bash "$ROOT/scripts/start.sh"
   fi
