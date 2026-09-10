@@ -62,7 +62,7 @@ function isNewer(left, right) {
   return false;
 }
 
-async function get(url, { timeoutMs = 15_000 } = {}) {
+async function get(url, { timeoutMs = 15_000, headers = {} } = {}) {
   const parsed = new URL(url);
   if (parsed.protocol !== "https:" || !ALLOWED_HOSTS.includes(parsed.hostname)) {
     throw new Error(`refused a URL outside the pinned GitHub hosts: ${url}`);
@@ -70,7 +70,7 @@ async function get(url, { timeoutMs = 15_000 } = {}) {
   const abort = new AbortController();
   const timer = setTimeout(() => abort.abort(), timeoutMs);
   try {
-    const response = await fetch(url, { signal: abort.signal, redirect: "follow" });
+    const response = await fetch(url, { signal: abort.signal, redirect: "follow", headers });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return response;
   } finally {
@@ -134,7 +134,13 @@ async function updateArchive() {
   const current = localVersion();
   let published = null;
   try {
-    published = String(JSON.parse(await (await get(MANIFEST_URL)).text())?.version ?? "").trim();
+    // Uncompressed on purpose. raw.githubusercontent caches the gzip and the
+    // identity variants separately, and the gzip one was observed serving a
+    // version that had been superseded ten minutes earlier, from several edge
+    // nodes, long past its own max-age. Node asks for gzip by default, so left
+    // alone this reads a stale number and skips a release. The file is 400 bytes.
+    const response = await get(MANIFEST_URL, { headers: { "accept-encoding": "identity" } });
+    published = String(JSON.parse(await response.text())?.version ?? "").trim();
   } catch {
     return false;
   }
@@ -154,10 +160,22 @@ async function updateArchive() {
       timeout: 120_000
     });
     if (tar.status !== 0) return false;
-    if (!existsSync(path.join(extracted, "package.json"))) return false;
+
+    // The archive is fetched from a second cache, so check what actually came
+    // down rather than what was announced. Swapping in something no newer would
+    // announce an update that did not happen, at every single launch.
+    let arrived = null;
+    try {
+      arrived = String(
+        JSON.parse(readFileSync(path.join(extracted, "package.json"), "utf8"))?.version ?? ""
+      ).trim();
+    } catch {
+      return false;
+    }
+    if (!isNewer(arrived, current)) return false;
 
     swapIn(extracted);
-    process.stderr.write(`Updated to version ${published}.\n`);
+    process.stderr.write(`Updated to version ${arrived}.\n`);
     return true;
   } catch {
     return false;
