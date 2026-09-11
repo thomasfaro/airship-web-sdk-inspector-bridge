@@ -17,7 +17,7 @@
  */
 
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -30,20 +30,19 @@ const MANIFEST_URL = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANC
 const ARCHIVE_URL = `https://codeload.github.com/${OWNER}/${REPO}/tar.gz/refs/heads/${BRANCH}`;
 const ALLOWED_HOSTS = ["raw.githubusercontent.com", "codeload.github.com"];
 
-// What an update is allowed to write. Everything else in the folder — the
-// private Node in .node/, the private adb in .adb/, anything someone dropped in
-// there — is none of its business.
-const MANAGED = [
-  "bridge",
-  "dist",
-  "tools",
-  "scripts",
-  "package.json",
-  "README.md",
-  "Start USB bridge.command",
-  "Install background bridge.command",
-  "Remove background bridge.command"
-];
+// What an update must never write — everything else in the published archive is
+// the source of truth. Asking it this way round, rather than listing what may be
+// replaced, is what lets a file added at the top level of a release reach a
+// folder that has never heard of it: a list of allowed names can only ever hold
+// names the version doing the updating already knew.
+//
+// The private Node in .node/, the private adb in .adb/, the opt-out marker and
+// the staging folders belong to this install rather than to the source.
+const PROTECTED = new Set([".git", ".node", ".adb", ".no-auto-update", ".DS_Store"]);
+
+function isProtected(entry) {
+  return PROTECTED.has(entry) || entry.startsWith(".update-");
+}
 
 const UPDATED = 10;
 
@@ -128,12 +127,15 @@ function updateCheckout() {
 function swapIn(staging) {
   const attic = mkdtempSync(path.join(tmpdir(), "airship-bridge-old-"));
   try {
-    for (const entry of MANAGED) {
-      const incoming = path.join(staging, entry);
-      if (!existsSync(incoming)) continue;
+    // Entries the release has dropped are left where they are: an orphaned file
+    // nobody reads is inert, and a delete loop pointed at the wrong folder is
+    // not. A folder still in the release is replaced whole, so anything removed
+    // inside one does go.
+    for (const entry of readdirSync(staging)) {
+      if (isProtected(entry)) continue;
       const current = path.join(ROOT, entry);
-      if (existsSync(current)) renameSync(current, path.join(attic, entry.replace(/\//g, "_")));
-      renameSync(incoming, current);
+      if (existsSync(current)) renameSync(current, path.join(attic, entry));
+      renameSync(path.join(staging, entry), current);
     }
   } finally {
     rmSync(attic, { recursive: true, force: true });
