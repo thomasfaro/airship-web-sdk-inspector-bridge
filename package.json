@@ -1,6 +1,6 @@
 {
   "name": "airship-web-sdk-inspector-bridge",
-  "version": "1.4.2",
+  "version": "1.5.0",
   "private": true,
   "description": "USB bridge for the Airship Web SDK Inspector: read a phone over the cable, nothing installed on the device.",
   "type": "module",
