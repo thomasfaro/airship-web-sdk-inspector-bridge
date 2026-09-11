@@ -44,6 +44,81 @@ bridge_is_up() {
   curl -sf --max-time 4 "${APP_URL}/manifest.webmanifest" 2>/dev/null | grep -q "Airship"
 }
 
+# Desktop, Documents, Downloads and iCloud Drive are protected by macOS privacy
+# rules. A double-clicked launcher reads them because Terminal has permission; a
+# background service has no window to ask through, so every read fails with
+# "Operation not permitted" and the service restarts forever. Nothing can be
+# granted from a script, so the folder has to sit outside those four.
+protected_location() {
+  case "$ROOT/" in
+    "$HOME/Desktop/"* | "$HOME/Documents/"* | "$HOME/Downloads/"* | "$HOME/Library/Mobile Documents/"*)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+move_out_of_protected_location() {
+  local target="$HOME/$(basename "$ROOT")"
+  local reply=""
+
+  warn "macOS will not let a background service read this folder."
+  echo ""
+  echo "Desktop, Documents, Downloads and iCloud Drive are private: a service is"
+  echo "not an app, so there is no window to ask you for permission through, and"
+  echo "every read fails. Starting the bridge by hand is unaffected — it is only"
+  echo "the background service that cannot live there."
+  echo ""
+
+  if [[ -e "$target" ]]; then
+    err "Move this folder out of $(dirname "$ROOT" | sed "s|$HOME|~|") yourself, then double-click this file again."
+    err "It cannot be moved to ${target/#$HOME/~}: something is already there."
+    hold_window
+    exit 1
+  fi
+
+  echo "This can move the whole bridge folder for you:"
+  echo "  from  ${ROOT/#$HOME/~}"
+  echo "  to    ${target/#$HOME/~}"
+  echo ""
+  echo "Nothing is lost — it is the same folder, one level up, and the launchers"
+  echo "inside it keep working from there."
+  echo ""
+
+  if [[ "${BRIDGE_AUTO_INSTALL:-0}" == "1" ]]; then
+    reply="y"
+  elif [[ -t 0 ]]; then
+    read -r -p "Move it now? [Y/n] " reply || reply="n"
+  else
+    err "Move the folder to ${target/#$HOME/~}, then run this again."
+    exit 1
+  fi
+
+  case "${reply:-y}" in
+    y | Y | yes | YES | Yes) ;;
+    *)
+      echo ""
+      echo "Nothing moved. Move the folder to ${target/#$HOME/~} when you want the"
+      echo "service, or keep using \"Start USB bridge.command\" as you do now."
+      hold_window
+      exit 0
+      ;;
+  esac
+
+  if ! mv "$ROOT" "$target"; then
+    err "The folder could not be moved. Move it in Finder, then double-click this file again."
+    hold_window
+    exit 1
+  fi
+
+  echo ""
+  bold "Moved to ${target/#$HOME/~}"
+  echo ""
+  # Carrying on from the old path would install a service pointing at a folder
+  # that no longer exists, so the rest of the work belongs to the moved copy.
+  exec bash "$target/scripts/agent.sh" install
+}
+
 # The folder path travels to launchd as XML text, and a folder is free to be
 # called "Sales & Marketing".
 xml_escape() {
@@ -115,6 +190,10 @@ install_agent() {
   echo "Folder: $ROOT"
   echo ""
 
+  if protected_location; then
+    move_out_of_protected_location
+  fi
+
   write_plist
 
   # bootout first: a service already registered refuses to be registered twice,
@@ -139,9 +218,18 @@ install_agent() {
       echo ""
       bold "Ready: $APP_URL"
       echo ""
-      echo "The bridge now starts by itself when you log in, and starts again if"
-      echo "it stops. There is no window to keep open: open the page or the"
-      echo "installed app whenever you need it."
+      # The answer may be coming from a bridge started by hand, which holds the
+      # port and leaves the service standing by. That is a fine state, but it is
+      # not the one just promised, so it gets said.
+      if curl -s --max-time 20 "${APP_URL}/api/status" | grep -q '"serving":true'; then
+        echo "The bridge now starts by itself when you log in, and starts again if"
+        echo "it stops. There is no window to keep open: open the page or the"
+        echo "installed app whenever you need it."
+      else
+        echo "A bridge you started by hand is holding port ${PORT}. It keeps working"
+        echo "as it is; the service takes over within a minute of that window being"
+        echo "closed, and from then on there is no window to keep open."
+      fi
       echo ""
       echo "To undo this, double-click \"Remove background bridge.command\"."
       if command -v open >/dev/null 2>&1; then
@@ -153,12 +241,23 @@ install_agent() {
     sleep 1
   done
 
-  warn "The service is registered, but nothing is answering on port ${PORT} yet."
+  # A registered service that cannot start retries every thirty seconds for as
+  # long as the machine is on. Leaving that behind would be worse than not
+  # having installed it, so it is taken back out.
+  warn "The service did not come up on port ${PORT}, so it has been removed again."
   echo ""
-  echo "If the port is taken by a bridge you started by hand, close that window:"
-  echo "the service takes over within a minute."
+  if tail -40 "$LOG" 2>/dev/null | grep -q "not permitted"; then
+    echo "macOS refused it access to the bridge folder. If the folder sits on an"
+    echo "external disk, or in a folder you granted to Terminal alone, move it to"
+    echo "your home folder and try again."
+  else
+    echo "What it printed on the way down is in:"
+    echo "  $LOG"
+  fi
+  launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
+  rm -f "$PLIST"
   echo ""
-  echo "Otherwise the log says why: $LOG"
+  echo "\"Start USB bridge.command\" still works the way it always did."
   hold_window
 }
 

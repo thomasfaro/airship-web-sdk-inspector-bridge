@@ -11,7 +11,9 @@ Two double-clicks on **macOS**. Nothing to install first — no Node.js, no Home
 account.
 
 1. Green **Code** button above → **Download ZIP**. Unzip it, then move the folder somewhere you will
-   keep it, such as `Documents`.
+   keep it. Your **home folder** is the best place: `Desktop`, `Documents` and `Downloads` work for
+   the double-click but not for the background service below, because macOS keeps those three private
+   from anything that has no window to ask you with.
 2. Double-click **`Start USB bridge.command`**.
 
 A terminal window opens and reports what it is doing. The first start asks one or two questions —
@@ -81,6 +83,11 @@ Double-click **`Install background bridge.command`** once. From then on macOS st
 you log in and starts it again if it ever stops, so there is no window to keep open and the page
 answers whenever you open it — including from the app icon, which is the one case a terminal window
 cannot serve, because clicking an icon cannot start a server.
+
+One thing it insists on: the bridge folder must not be in `Desktop`, `Documents`, `Downloads` or
+iCloud Drive. macOS keeps those private from a background service — a service has no window to ask
+you for permission through, so every read fails — and the launcher therefore offers to move the
+folder to your home folder before installing anything. Say yes, or move it yourself first.
 
 It writes exactly one file outside this folder, `~/Library/LaunchAgents/com.airship.websdkinspector.bridge.plist`,
 and **`Remove background bridge.command`** deletes it and stops the bridge. Nothing else is left
