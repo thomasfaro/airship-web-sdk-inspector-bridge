@@ -25,6 +25,16 @@ h1 { margin: 0 0 10px; font-size: 30px; letter-spacing: -0.02em; }
 .brand h1 { margin: 0; }
 .brand img { border-radius: 9px; }
 
+.version {
+  align-self: center;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Chrome decides when an app may be offered for installation, so the button
    only appears once the browser says so, and never inside the installed app. */
 #install { margin-left: auto; padding: 7px 14px; font-size: 14px; }

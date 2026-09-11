@@ -27,6 +27,17 @@ const AGENT_PLIST = join(
   'com.airship.websdkinspector.bridge.plist'
 );
 
+// The number the updater compares against, read once: an update replaces this
+// file wholesale and then restarts the process that answers with it.
+const VERSION =
+  (() => {
+    try {
+      return String(JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version || '').trim();
+    } catch {
+      return '';
+    }
+  })() || null;
+
 const PORT = Number(process.env.PORT || 8770);
 // Android forwards start at 9222, one port per debugging socket on the phone.
 const ANDROID_PORT = 9222;
@@ -416,6 +427,9 @@ const server = createServer(async (request, response) => {
       const android = await androidDevices();
 
       return sendJson(response, 200, {
+        // Of the running server rather than of the page: the page can be a
+        // cached copy from before an update, this cannot.
+        version: VERSION,
         collectorReady: existsSync(COLLECTOR_PATH),
         // Only the launcher can bring the server back, so only a server it
         // started may offer the button that stops one.

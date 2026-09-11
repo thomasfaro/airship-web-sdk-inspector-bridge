@@ -72,7 +72,9 @@ trap 'exit 130' INT TERM
 
 # On the restart that follows an update, the banner has already been read.
 if [[ "${BRIDGE_UPDATED:-0}" != "1" ]]; then
-  bold "Airship Web SDK Inspector — USB bridge"
+  # sed rather than node: nothing has made a Node available yet at this point.
+  VERSION="$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' "$ROOT/package.json" 2>/dev/null | head -1)"
+  bold "Airship Web SDK Inspector — USB bridge${VERSION:+ v$VERSION}"
   echo "Folder: $ROOT"
   echo ""
 fi
