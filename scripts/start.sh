@@ -55,7 +55,8 @@ on_exit() {
   if [[ -n "${SERVER_PID:-}" ]] && kill -0 "$SERVER_PID" 2>/dev/null; then
     kill "$SERVER_PID" 2>/dev/null || true
   fi
-  if [[ "$code" -eq 0 || "$code" -eq 130 ]]; then
+  # 64 is the stand-by below, which is a normal outcome and not a failure.
+  if [[ "$code" -eq 0 || "$code" -eq 64 || "$code" -eq 130 ]]; then
     return
   fi
   err ""
@@ -81,8 +82,26 @@ fi
 # what makes every later double-click a plain double-click.
 xattr -dr com.apple.quarantine . 2>/dev/null || true
 
+# A restart started over from the top while the process it replaces was still
+# letting go of the port. Nobody else is expected here, so waiting the moment out
+# is what keeps the page's restart button to a few seconds.
+if [[ "${BRIDGE_RESTARTING:-0}" == "1" ]]; then
+  for _ in $(seq 1 20); do
+    bridge_is_up || break
+    sleep 0.5
+  done
+fi
+
 if bridge_is_up; then
   READY=1
+  # The background service is the one caller that must not shrug and leave: it
+  # is meant to be holding this port. Whoever holds it wins for now, and exiting
+  # short of success is what has launchd try again, so the service takes over
+  # the moment the hand-started window is closed.
+  if [[ "${BRIDGE_AGENT:-0}" == "1" ]]; then
+    echo "Port ${PORT} is held by a bridge started by hand. Standing by."
+    exit 64
+  fi
   bold "Already running — reopening $APP_URL"
   open_page
   exit 0
@@ -151,18 +170,34 @@ fi
 
 echo "Starting on port ${PORT}…"
 echo ""
+
 # BRIDGE_MANAGED tells the server a launcher is watching it, which is what makes
 # the page's "Update and restart" button possible.
-PORT="$PORT" BRIDGE_MANAGED=1 node "$ROOT/tools/bridge/server.js" &
-SERVER_PID=$!
+start_server() {
+  PORT="$PORT" BRIDGE_MANAGED=1 node "$ROOT/tools/bridge/server.js" &
+  SERVER_PID=$!
 
-for _ in $(seq 1 40); do
-  if bridge_is_up; then
-    READY=1
+  for _ in $(seq 1 40); do
+    if bridge_is_up; then
+      READY=1
+      return 0
+    fi
+    kill -0 "$SERVER_PID" 2>/dev/null || return 1
+    sleep 0.25
+  done
+  return 1
+}
+
+# Three tries, because the one failure seen in practice is a race this loses by
+# a fraction of a second: on a restart the port can still belong to the process
+# being replaced, and a server that cannot bind exits immediately.
+for attempt in 1 2 3; do
+  if start_server; then
     break
   fi
-  kill -0 "$SERVER_PID" 2>/dev/null || break
-  sleep 0.25
+  if [[ "$attempt" -lt 3 ]]; then
+    sleep 1
+  fi
 done
 
 if [[ "$READY" -ne 1 ]]; then
@@ -191,7 +226,7 @@ if [[ "$server_status" -eq 75 ]]; then
   echo ""
   bold "Updating and restarting…"
   echo ""
-  exec bash "$ROOT/scripts/start.sh"
+  BRIDGE_RESTARTING=1 exec bash "$ROOT/scripts/start.sh"
 fi
 
 exit "$server_status"

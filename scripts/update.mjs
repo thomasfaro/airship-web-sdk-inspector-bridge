@@ -33,7 +33,17 @@ const ALLOWED_HOSTS = ["raw.githubusercontent.com", "codeload.github.com"];
 // What an update is allowed to write. Everything else in the folder — the
 // private Node in .node/, the private adb in .adb/, anything someone dropped in
 // there — is none of its business.
-const MANAGED = ["bridge", "dist", "tools", "scripts", "package.json", "README.md", "Start USB bridge.command"];
+const MANAGED = [
+  "bridge",
+  "dist",
+  "tools",
+  "scripts",
+  "package.json",
+  "README.md",
+  "Start USB bridge.command",
+  "Install background bridge.command",
+  "Remove background bridge.command"
+];
 
 const UPDATED = 10;
 

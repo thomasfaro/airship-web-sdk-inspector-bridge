@@ -18,6 +18,14 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..');
 const WEB_ROOT = join(ROOT, 'bridge');
 const COLLECTOR_PATH = join(ROOT, 'dist', 'extension', 'injected.js');
+// Written by "Install background bridge.command"; its presence is what tells the
+// page whether the bridge comes back on its own.
+const AGENT_PLIST = join(
+  homedir(),
+  'Library',
+  'LaunchAgents',
+  'com.airship.websdkinspector.bridge.plist'
+);
 
 const PORT = Number(process.env.PORT || 8770);
 // Android forwards start at 9222, one port per debugging socket on the phone.
@@ -584,6 +592,14 @@ const server = createServer(async (request, response) => {
         // Only the launcher can bring the server back, so only a server it
         // started may offer the button that stops one.
         canRestart: process.env.BRIDGE_MANAGED === '1',
+        // The page cannot install the background service — no page can start a
+        // process — but it is the right place to say whether one is installed,
+        // because it is where the absence is felt.
+        background: {
+          supported: process.platform === 'darwin',
+          installed: existsSync(AGENT_PLIST),
+          serving: process.env.BRIDGE_AGENT === '1'
+        },
         android,
         ios: {
           available: ios.proxyInstalled,
@@ -691,6 +707,18 @@ function openInBrowser(url) {
     /* no browser to open is not a reason to fail: the URL is printed above */
   });
 }
+
+// Without this, a port already taken is an uncaught exception: a stack trace
+// where a sentence belongs, and on the restart path it happens often enough to
+// be worth saying plainly. The launcher reads the exit code and tries again.
+server.on('error', (error) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use, so the bridge did not start.`);
+    process.exit(70);
+  }
+  console.error(`The bridge could not listen on port ${PORT}: ${error.message}`);
+  process.exit(70);
+});
 
 server.listen(PORT, '127.0.0.1', () => {
   const url = `http://localhost:${PORT}`;

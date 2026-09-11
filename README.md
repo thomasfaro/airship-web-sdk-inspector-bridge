@@ -19,7 +19,8 @@ press **Return** to accept — and takes a minute; later starts take a few secon
 Your browser then opens on **http://localhost:8770**.
 
 Keep that terminal window open while you use the bridge: it *is* the bridge. Closing it, or pressing
-`Ctrl+C` in it, stops it.
+`Ctrl+C` in it, stops it. If you would rather never think about that window again, see
+[Let it run in the background](#let-it-run-in-the-background).
 
 <details>
 <summary>If macOS refuses to open the launcher</summary>
@@ -73,6 +74,22 @@ Then, every time:
 
 The header has an **Install as an app** button. Use it once and the bridge gets its own icon and
 window, rather than being a tab among twenty.
+
+## Let it run in the background
+
+Double-click **`Install background bridge.command`** once. From then on macOS starts the bridge when
+you log in and starts it again if it ever stops, so there is no window to keep open and the page
+answers whenever you open it — including from the app icon, which is the one case a terminal window
+cannot serve, because clicking an icon cannot start a server.
+
+It writes exactly one file outside this folder, `~/Library/LaunchAgents/com.airship.websdkinspector.bridge.plist`,
+and **`Remove background bridge.command`** deletes it and stops the bridge. Nothing else is left
+behind: no administrator password, no login item you have to hunt for in System Settings. What the
+service runs is the same launcher as the double-click, so it updates itself the same way, and the
+page's **Update and restart** button keeps working.
+
+If you move the bridge folder, double-click the install file again — the service remembers a path.
+Its output, when something goes wrong, is in `~/Library/Logs/airship-web-sdk-inspector-bridge.log`.
 
 ## It keeps itself up to date
 
