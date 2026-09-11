@@ -242,7 +242,11 @@ if [[ "$server_status" -eq 75 ]]; then
   echo ""
   bold "Updating and restarting…"
   echo ""
-  BRIDGE_RESTARTING=1 exec bash "$ROOT/scripts/start.sh"
+  # BRIDGE_UPDATED is cleared, not carried: it exists to keep a single startup
+  # from updating twice, and exec keeps the environment, so leaving it set would
+  # switch the updater off for the whole life of this launcher — one update ever,
+  # then silence. This is a new startup and it gets to check again.
+  BRIDGE_UPDATED=0 BRIDGE_RESTARTING=1 exec bash "$ROOT/scripts/start.sh"
 fi
 
 exit "$server_status"
