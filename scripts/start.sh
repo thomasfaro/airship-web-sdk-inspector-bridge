@@ -115,6 +115,22 @@ if ! ensure_node_available "$ROOT"; then
   exit 1
 fi
 
+# A file added at the top level of the folder cannot reach an install that
+# already exists: an update only replaces what the version doing the updating
+# knew about, and a version that predates a launcher has never heard of it. So
+# the launchers travel inside scripts/ as well, and any that is missing from the
+# folder is put back from there. Deleting one on purpose undoes itself, which is
+# the price of every install ending up with the same folder.
+if [[ -d "$ROOT/scripts/launchers" ]]; then
+  for launcher in "$ROOT/scripts/launchers"/*.command; do
+    [[ -e "$launcher" ]] || continue
+    target="$ROOT/$(basename "$launcher")"
+    if [[ ! -f "$target" ]]; then
+      cp "$launcher" "$target" 2>/dev/null && chmod +x "$target" 2>/dev/null || true
+    fi
+  done
+fi
+
 # Updating replaces this very script, so the new one has to be the one that runs
 # the rest. The guard keeps that to a single restart.
 if [[ "${BRIDGE_UPDATED:-0}" != "1" ]]; then
