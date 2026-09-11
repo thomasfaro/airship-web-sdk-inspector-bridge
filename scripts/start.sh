@@ -143,6 +143,15 @@ if [[ "${BRIDGE_UPDATED:-0}" != "1" ]]; then
   fi
 fi
 
+# Registering the airship-bridge:// handler at every start, rather than only when
+# the background service is installed, is what makes the page's "Start the bridge"
+# button trustworthy: anyone who has ever started the bridge has the app that
+# answers it. Idempotent, fast when there is nothing to do, and never fatal —
+# failing to register a convenience is no reason not to start.
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  bash "$ROOT/scripts/install-url-handler.sh" --quiet || true
+fi
+
 # adb is the cable. The bridge can start without it — the page then says so — but
 # it would have nothing to talk to, so this is worth one question.
 adb_dir=""

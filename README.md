@@ -11,9 +11,7 @@ Two double-clicks on **macOS**. Nothing to install first — no Node.js, no Home
 account.
 
 1. Green **Code** button above → **Download ZIP**. Unzip it, then move the folder somewhere you will
-   keep it. Your **home folder** is the best place: `Desktop`, `Documents` and `Downloads` work for
-   the double-click but not for the background service below, because macOS keeps those three private
-   from anything that has no window to ask you with.
+   keep it. `Desktop`, `Documents`, `Downloads` and iCloud Drive all work.
 2. Double-click **`Start USB bridge.command`**.
 
 A terminal window opens and reports what it is doing. The first start asks one or two questions —
@@ -75,28 +73,28 @@ Then, every time:
 3. On the computer's page: **Scan**, pick the phone, pick the tab, **Read**.
 
 The header has an **Install as an app** button. Use it once and the bridge gets its own icon and
-window, rather than being a tab among twenty.
+window, rather than being a tab among twenty. If that window is opened while the server is stopped,
+click **Start the bridge**: the launcher registered on the first manual start brings it back without
+opening Terminal, and the page reloads when it answers.
 
 ## Let it run in the background
 
 Double-click **`Install background bridge.command`** once. From then on macOS starts the bridge when
-you log in and starts it again if it ever stops, so there is no window to keep open and the page
-answers whenever you open it — including from the app icon, which is the one case a terminal window
-cannot serve, because clicking an icon cannot start a server.
+you log in and checks every two minutes whether it has stopped, so there is no terminal window to
+keep open and the page answers whenever you open it.
 
-One thing it insists on: the bridge folder must not be in `Desktop`, `Documents`, `Downloads` or
-iCloud Drive. macOS keeps those private from a background service — a service has no window to ask
-you for permission through, so every read fails — and the launcher therefore offers to move the
-folder to your home folder before installing anything. Say yes, or move it yourself first.
+This also works when the bridge folder is in `Desktop`, `Documents`, `Downloads` or iCloud Drive.
+macOS refuses those folders to a bare background shell, so the installer builds a small, locally
+signed **Start Airship bridge** app in `~/Applications`. The background check only tests the local
+port and opens an `airship-bridge://` link when needed; the app behind that link launches the bridge
+with the file access macOS grants to a named app. No administrator password or Developer account is
+needed.
 
-It writes exactly one file outside this folder, `~/Library/LaunchAgents/com.airship.websdkinspector.bridge.plist`,
-and **`Remove background bridge.command`** deletes it and stops the bridge. Nothing else is left
-behind: no administrator password, no login item you have to hunt for in System Settings. What the
-service runs is the same launcher as the double-click, so it updates itself the same way, and the
-page's **Update and restart** button keeps working.
-
-If you move the bridge folder, double-click the install file again — the service remembers a path.
-Its output, when something goes wrong, is in `~/Library/Logs/airship-web-sdk-inspector-bridge.log`.
+**`Remove background bridge.command`** removes the launch agent and its background check. It keeps
+**Start Airship bridge** because the page's **Start the bridge** button relies on it; drag that app
+from `~/Applications` to the Trash if you want it gone too. If you move the bridge folder,
+double-click the install file again so the app records the new path. Logs are in
+`~/Library/Logs/airship-web-sdk-inspector-bridge.log`.
 
 ## It keeps itself up to date
 
