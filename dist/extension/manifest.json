@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Airship Web SDK Inspector",
-  "version": "1.0.0",
-  "description": "Shows the channel ID and the local state of the Airship Web SDK on the current page. Read-only.",
+  "version": "1.2.0",
+  "description": "Inspects Airship Web SDK local state and provides confirmed controls to reset site data.",
   "permissions": ["activeTab", "scripting"],
   "action": {
     "default_title": "Airship Web SDK Inspector",

@@ -360,6 +360,63 @@ async function collectFromTarget(wsUrl) {
   }
 }
 
+const SITE_ACTIONS = new Set(['clearLocalSiteData', 'cleanReload']);
+
+async function runSiteActionOnTarget(wsUrl, action) {
+  if (!SITE_ACTIONS.has(action)) throw new Error('invalid site action');
+
+  const session = await connect(wsUrl);
+  try {
+    await session.send('Page.bringToFront').catch(() => {});
+    await session.send('Runtime.enable').catch(() => {});
+    await evaluate(session, readCollector());
+
+    const slot = '__airshipBridgeSiteAction';
+    const expression = `
+(function () {
+  var slot = ${JSON.stringify(slot)};
+  if (window[slot] && window[slot].pending) return "pending";
+  if (window[slot] && window[slot].done) {
+    var out = window[slot].value;
+    window[slot] = null;
+    return out;
+  }
+  window[slot] = { pending: true };
+  try {
+    var action = window.__airshipWebSdkInspector.siteActions[${JSON.stringify(action)}];
+    Promise.resolve(action()).then(
+      function (result) {
+        window[slot] = { done: true, value: JSON.stringify({ ok: true, result: result }) };
+      },
+      function (error) {
+        window[slot] = { done: true, value: JSON.stringify({ ok: false, error: String(error) }) };
+      }
+    );
+  } catch (error) {
+    window[slot] = { done: true, value: JSON.stringify({ ok: false, error: String(error) }) };
+  }
+  return "pending";
+})()
+`;
+
+    // The action schedules any reload only after resolving, leaving enough time
+    // for this polling connection to collect its result first.
+    for (let attempt = 0; attempt < 200; attempt += 1) {
+      const value = await evaluate(session, expression);
+      if (typeof value === 'string' && value !== 'pending') {
+        const parsed = JSON.parse(value);
+        if (!parsed.ok) throw new Error(parsed.error);
+        return parsed.result;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+
+    throw new Error('the site action did not finish within 5 seconds');
+  } finally {
+    session.close();
+  }
+}
+
 // --- HTTP ------------------------------------------------------------------
 
 const MIME = {
@@ -398,6 +455,26 @@ function readBody(request) {
     });
     request.on('error', reject);
   });
+}
+
+function requireLocalOrigin(request) {
+  const origin = request.headers.origin;
+  if (!origin) return;
+
+  let url;
+  try {
+    url = new URL(origin);
+  } catch {
+    throw new Error('invalid request origin');
+  }
+
+  if (
+    url.protocol !== 'http:' ||
+    Number(url.port || 80) !== PORT ||
+    !['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)
+  ) {
+    throw new Error('site actions are accepted only from the local bridge page');
+  }
 }
 
 function serveStatic(request, response) {
@@ -480,6 +557,15 @@ const server = createServer(async (request, response) => {
       const { ws } = await readBody(request);
       if (typeof ws !== 'string' || !/^wss?:\/\//.test(ws)) throw new Error('invalid target');
       return sendJson(response, 200, { report: await collectFromTarget(ws) });
+    }
+
+    if (pathname === '/api/site-action' && request.method === 'POST') {
+      requireLocalOrigin(request);
+      const { ws, action } = await readBody(request);
+      if (typeof ws !== 'string' || !/^wss?:\/\//.test(ws)) throw new Error('invalid target');
+      return sendJson(response, 200, {
+        result: await runSiteActionOnTarget(ws, action)
+      });
     }
 
     return serveStatic(request, response);
