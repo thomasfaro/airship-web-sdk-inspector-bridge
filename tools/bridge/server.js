@@ -360,7 +360,7 @@ async function collectFromTarget(wsUrl) {
   }
 }
 
-const SITE_ACTIONS = new Set(['clearLocalSiteData', 'cleanReload']);
+const SITE_ACTIONS = new Set(['clearLocalSiteData', 'cleanReload', 'resetAirshipChannel']);
 
 async function runSiteActionOnTarget(wsUrl, action) {
   if (!SITE_ACTIONS.has(action)) throw new Error('invalid site action');
