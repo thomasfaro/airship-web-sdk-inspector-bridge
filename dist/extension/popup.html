@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Airship Web SDK Inspector</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 400px;
+        /* Airship Midnight, the same background the panel uses, so the popup
+           does not flash a different colour while the report is collected. */
+        background: #000818;
+      }
+      #report {
+        display: block;
+        min-height: 120px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="report"></div>
+    <script src="popup.js"></script>
+  </body>
+</html>

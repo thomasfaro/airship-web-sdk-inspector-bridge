@@ -1,0 +1,28 @@
+<!--
+  Source of truth for the 48 and 128 pixel icons.
+
+  The kite is the official Airship mark, its path taken verbatim from the
+  horizontal lockup on airship.com, so the silhouette, the porthole and the wave
+  are the real ones rather than a redraw. It is laid out here in the brand's
+  dark-background variant: white mark on Midnight, which also matches the
+  inspector panel itself. The Seafoam lens is what turns the mark into a tool
+  icon, and it carries a Midnight halo so the ring stays readable where it
+  crosses the tip of the kite.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <rect width="128" height="128" rx="28" fill="#000818" />
+
+  <g transform="translate(14 20) scale(2.22)">
+    <path
+      d="M16.6359 0L0 16.9509L5.91486 22.9778L5.95855 23.0223C8.55279 19.956 12.3923 18.0139 16.6741 18.0139C19.0827 18.0139 21.3547 18.6316 23.3372 19.7112C23.7796 19.9505 24.2056 20.2176 24.6152 20.5014C24.8227 20.6461 25.0248 20.7908 25.2214 20.9466C26.0134 21.5588 26.7398 22.2544 27.3897 23.0223L33.3045 16.9955L31.2291 14.8808L16.6359 0ZM16.6577 6.9451C17.5862 6.9451 18.3344 7.7075 18.3344 8.65355C18.3344 9.5996 17.5862 10.362 16.6577 10.362C15.7293 10.362 14.981 9.5996 14.981 8.65355C14.981 7.7075 15.7293 6.9451 16.6577 6.9451ZM27.4224 21.0802C26.9855 20.6517 26.5213 20.2399 26.0352 19.867C25.8167 19.7 25.5983 19.5387 25.3744 19.3828C24.9211 19.0712 24.4514 18.7818 23.9762 18.5203C21.7479 17.3071 19.2247 16.6616 16.685 16.6616C14.697 16.6616 12.7527 17.0511 10.9449 17.7857C14.5386 15.1201 18.9625 13.534 23.7523 13.534C25.4126 13.534 27.0238 13.7233 28.5748 14.0794L30.3007 15.8379L31.4367 16.9955L27.4279 21.0802H27.4224Z"
+      fill="#ffffff"
+    />
+  </g>
+
+  <g stroke="#000818" fill="none">
+    <line x1="102" y1="102" x2="115" y2="115" stroke-width="19" stroke-linecap="round" />
+    <circle cx="88" cy="88" r="20" stroke-width="17" />
+  </g>
+  <line x1="102" y1="102" x2="115" y2="115" stroke="#11DBC0" stroke-width="11" stroke-linecap="round" />
+  <circle cx="88" cy="88" r="20" fill="none" stroke="#11DBC0" stroke-width="9" />
+</svg>
