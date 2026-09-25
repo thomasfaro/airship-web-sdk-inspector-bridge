@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Airship Web SDK Inspector",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Inspects Airship Web SDK local state and provides confirmed controls to reset site data.",
   "permissions": ["activeTab", "scripting"],
   "action": {
